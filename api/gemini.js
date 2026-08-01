@@ -1,14 +1,30 @@
 // api/gemini.js
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  // POSTリクエストのみ受け付ける
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Vercelに設定した環境変数からAPIキーを取得
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on Vercel.' });
+  }
 
   const { prompt } = req.body;
-  const apiKey = process.env.GEMINI_API_KEY; // Vercelに設定した環境変数を取得
+
+  if (!prompt) {
+    return res.status(400).json({ error: 'Prompt is required.' });
+  }
 
   try {
+    // VercelサーバーからGoogle Gemini APIを安全に呼び出し
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json' 
+      },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
@@ -26,9 +42,18 @@ export default async function handler(req, res) {
         }
       })
     });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Gemini API Error:', errorData);
+      return res.status(response.status).json({ error: 'Failed to fetch from Gemini API', details: errorData });
+    }
+
     const data = await response.json();
-    res.status(200).json(data);
+    return res.status(200).json(data);
+
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch Gemini API' });
+    console.error('Server error:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
   }
 }
