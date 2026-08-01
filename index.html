@@ -115,6 +115,21 @@
       margin: 0 0 0 8px;
       cursor: pointer;
     }
+    .btn-cancel {
+      background: none;
+      border: 1px solid var(--secondary);
+      color: var(--secondary);
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      width: auto;
+      margin: 0;
+    }
+    .btn-cancel.is-reset {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
     .empty-msg {
       color: var(--secondary);
       font-size: 0.85rem;
@@ -345,6 +360,16 @@
       updateUI();
     }
 
+    // 個別の食事ログの差し引き計算をキャンセル/復元する関数
+    function toggleMealReset(index, event) {
+      if (event) event.stopPropagation();
+      if (!logs[index]) return;
+
+      logs[index].reset = !logs[index].reset;
+      localStorage.setItem('macro_logs_today', JSON.stringify(logs));
+      updateUI();
+    }
+
     function updateUI() {
       const eaten = logs.reduce((acc, item) => {
         if (!item.reset) {
@@ -404,6 +429,9 @@
               </div>
             </div>
             <div style="text-align: right; display: flex; align-items: center; gap: 8px;">
+              <button class="btn-cancel ${item.reset ? 'is-reset' : ''}" onclick="toggleMealReset(${index}, event)">
+                ${item.reset ? '計算に戻す' : '差し引き取消'}
+              </button>
               <button class="btn-fav-add" onclick="addToFavorites(${index}, event)">★ お気に入り</button>
               <div>
                 <span style="font-weight: bold; color: var(--accent); font-size: 0.85rem;">+ 再記録</span>
