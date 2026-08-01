@@ -6,6 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>マクロ管理アプリ</title>
+
   <style>
     :root {
       --bg: #f5f5f7;
@@ -13,6 +14,7 @@
       --text: #1d1d1f;
       --accent: #0071e3;
       --danger: #ff3b30;
+      --secondary: #8e8e93;
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -31,6 +33,13 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     }
     h2 { font-size: 1.1rem; margin-top: 0; margin-bottom: 12px; }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .card-header h2 { margin: 0; }
     .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center; }
     .stat-box { background: #f0f0f5; padding: 8px; border-radius: 8px; }
     .stat-label { font-size: 0.75rem; color: #666; }
@@ -53,68 +62,80 @@
       cursor: pointer;
     }
     button:disabled { background: #aaa; }
-    .btn-secondary {
-      background: #e5e5ea;
-      color: var(--text);
-    }
     .btn-reset {
-      background: #ff9500;
-      color: white;
-      padding: 6px 12px;
-      font-size: 0.8rem;
+      background: var(--danger);
       width: auto;
+      padding: 6px 12px;
       margin: 0;
+      font-size: 0.8rem;
     }
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
+    .btn-image-upload {
+      display: inline-block;
+      background: #e5e5ea;
+      color: #1d1d1f;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      border: 1px solid #ccc;
     }
-    .card-header h2 { margin: 0; }
     .log-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-bottom: 1px solid #eee;
-      padding: 8px 0;
+      padding: 10px 8px;
       font-size: 0.9rem;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: background-color 0.15s ease;
     }
-    .log-item.cancelled .log-text {
-      text-decoration: line-through;
-      color: #8e8e93;
+    .log-item:active {
+      background-color: #e5e5ea;
     }
-    .log-actions {
-      display: flex;
-      gap: 4px;
-      align-items: center;
-    }
-    .btn-action {
-      background: #f0f0f5;
+    .btn-fav-add {
+      background: none;
+      border: 1px solid var(--accent);
       color: var(--accent);
-      border: none;
       padding: 4px 8px;
-      border-radius: 6px;
       font-size: 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
       width: auto;
       margin: 0;
-      font-weight: bold;
+    }
+    .btn-fav-del {
+      background: none;
+      border: none;
+      color: var(--secondary);
+      font-size: 0.8rem;
+      padding: 4px;
+      width: auto;
+      margin: 0 0 0 8px;
       cursor: pointer;
     }
-    .btn-action.active {
-      background: #e5f1ff;
-    }
     .btn-cancel {
-      color: var(--danger);
-      background: #fff0f0;
+      background: none;
+      border: 1px solid var(--secondary);
+      color: var(--secondary);
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      width: auto;
+      margin: 0;
     }
-    #image-preview {
-      width: 100%;
-      max-height: 200px;
-      object-fit: cover;
-      border-radius: 8px;
-      margin-bottom: 8px;
-      display: none;
+    .btn-cancel.is-reset {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .empty-msg {
+      color: var(--secondary);
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 12px 0;
     }
   </style>
 </head>
@@ -146,23 +167,35 @@
       </div>
     </div>
 
-    <!-- 食事入力エリア -->
+    <!-- 食事入力エリア (テキスト + 写真対応) -->
     <div class="card">
-      <h2>食事を記録 (Gemini解析)</h2>
-      
-      <!-- 写真選択とプレビュー -->
-      <input type="file" id="image-input" accept="image/*" style="display: none;" onchange="handleImageSelect(event)">
-      <button type="button" class="btn-secondary" onclick="document.getElementById('image-input').click()">📷 食事写真を撮影/選択</button>
-      <img id="image-preview" alt="選択した写真">
-      
-      <textarea id="meal-input" rows="2" placeholder="例: 鮭の塩焼き、白米普通盛り、味噌汁（※写真がある場合は空欄でもOK）"></textarea>
+      <h2>食事を記録 (Gemini AI解析)</h2>
+      <textarea id="meal-input" rows="2" placeholder="例: 鮭の塩焼き、白米普通盛り（写真は下から追加できます）"></textarea>
+
+      <!-- 写真選択UI -->
+      <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+        <label for="image-input" class="btn-image-upload">
+          📷 食事写真を撮影/選択
+        </label>
+        <input type="file" id="image-input" accept="image/*" capture="environment" onchange="handleImageSelect(event)" style="display: none;">
+        <button id="clear-img-btn" onclick="clearImage()" style="display: none; width: auto; background: var(--secondary); margin: 0; padding: 6px 12px; font-size: 0.8rem;">写真取消</button>
+      </div>
+
+      <!-- 画像プレビュー表示領域 -->
+      <div id="image-preview-container" style="display: none; margin-bottom: 8px; text-align: center;">
+        <img id="image-preview" style="max-width: 100%; max-height: 200px; border-radius: 8px; border: 1px solid #ccc; object-fit: cover;">
+      </div>
+
       <button id="add-btn" onclick="addMeal()">解析して引き算</button>
     </div>
 
-    <!-- お気に入りの食事 -->
+    <!-- お気に入りの食事エリア -->
     <div class="card">
-      <h2>お気に入りの食事</h2>
-      <div id="favorite-list"></div>
+      <div class="card-header">
+        <h2>お気に入りの食事</h2>
+        <small style="font-size: 0.75rem; color: var(--secondary);">タップで即座に再記録</small>
+      </div>
+      <div id="fav-list"></div>
     </div>
 
     <!-- 設定エリア -->
@@ -179,9 +212,12 @@
       </div>
     </details>
 
-    <!-- 本日のログ -->
+    <!-- 本日のログエリア -->
     <div class="card">
-      <h2>本日の食事ログ</h2>
+      <div class="card-header">
+        <h2>本日の食事ログ</h2>
+        <small style="font-size: 0.75rem; color: var(--secondary);">タップで同じ食事を再記録</small>
+      </div>
       <div id="log-list"></div>
     </div>
   </div>
@@ -192,7 +228,7 @@
     };
     let logs = JSON.parse(localStorage.getItem('macro_logs_today')) || [];
     let favorites = JSON.parse(localStorage.getItem('macro_favorites')) || [];
-    let currentBase64Image = null;
+    let selectedImage = null; // { mimeType: 'image/jpeg', data: '...' }
 
     document.getElementById('target-cal').value = settings.cal;
     document.getElementById('target-p').value = settings.p;
@@ -200,7 +236,6 @@
     document.getElementById('target-c').value = settings.c;
     updateUI();
 
-    // 写真のサイズを自動圧縮（リサイズ）する関数
     function handleImageSelect(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -209,7 +244,7 @@
       reader.onload = function(e) {
         const img = new Image();
         img.onload = function() {
-          // 最大長辺を 1024px に抑えて圧縮
+          // 最大長辺を1024pxにリサイズしてファイルサイズを軽量化
           const maxDim = 1024;
           let width = img.width;
           let height = img.height;
@@ -229,21 +264,34 @@
           const canvas = document.createElement('canvas');
           canvas.width = width;
           canvas.height = height;
-
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
 
-          // JPEG品質0.8で軽量化（これで通常数百KB程度に収まります）
+          // 軽量なJPEGに変換
           const resizedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-          currentBase64Image = resizedDataUrl.split(',')[1];
+          const mimeType = 'image/jpeg';
+          const base64Data = resizedDataUrl.split(',')[1];
 
-          const preview = document.getElementById('image-preview');
-          preview.src = resizedDataUrl;
-          preview.style.display = 'block';
+          selectedImage = {
+            mimeType: mimeType,
+            data: base64Data
+          };
+
+          const imgEl = document.getElementById('image-preview');
+          imgEl.src = resizedDataUrl;
+          document.getElementById('image-preview-container').style.display = 'block';
+          document.getElementById('clear-img-btn').style.display = 'inline-block';
         };
         img.src = e.target.result;
       };
       reader.readAsDataURL(file);
+    }
+
+    function clearImage() {
+      selectedImage = null;
+      document.getElementById('image-input').value = '';
+      document.getElementById('image-preview-container').style.display = 'none';
+      document.getElementById('clear-img-btn').style.display = 'none';
     }
 
     function saveSettings() {
@@ -258,56 +306,75 @@
       alert('設定を保存しました');
     }
 
+    function addToFavorites(index, event) {
+      if (event) event.stopPropagation();
+      const item = logs[index];
+      if (!item) return;
+
+      const exists = favorites.some(fav => fav.name === item.name && fav.cal === item.cal);
+      if (exists) {
+        alert('この食事はすでにお気に入りに登録されています。');
+        return;
+      }
+
+      favorites.push({
+        name: item.name, cal: item.cal, p: item.p, f: item.f, c: item.c
+      });
+
+      localStorage.setItem('macro_favorites', JSON.stringify(favorites));
+      updateUI();
+    }
+
+    function removeFavorite(favIndex, event) {
+      if (event) event.stopPropagation();
+      favorites.splice(favIndex, 1);
+      localStorage.setItem('macro_favorites', JSON.stringify(favorites));
+      updateUI();
+    }
+
+    function repeatFavorite(favIndex) {
+      const item = favorites[favIndex];
+      if (!item) return;
+
+      logs.push({
+        name: item.name, cal: item.cal, p: item.p, f: item.f, c: item.c, reset: false
+      });
+
+      localStorage.setItem('macro_logs_today', JSON.stringify(logs));
+      updateUI();
+    }
+
     function resetDeduction() {
-      if (logs.length === 0) return;
-      if (confirm('本日のすべての食事ログの引き算を取り消しますか？\n（食事ログ一覧の履歴はそのまま残ります）')) {
-        logs = logs.map(item => ({ ...item, reset: true }));
+      const activeLogs = logs.filter(item => !item.reset);
+      if (activeLogs.length === 0) {
+        alert('リセット対象の差し引きデータがありません。');
+        return;
+      }
+      if (confirm('今日の差し引きをリセットし、残りマクロを目標値に戻しますか？（食事ログ一覧は保持されます）')) {
+        logs.forEach(item => item.reset = true);
         localStorage.setItem('macro_logs_today', JSON.stringify(logs));
         updateUI();
       }
     }
 
-    function toggleMealReset(index) {
+    function repeatMeal(index) {
+      const item = logs[index];
+      if (!item) return;
+
+      logs.push({
+        name: item.name, cal: item.cal, p: item.p, f: item.f, c: item.c, reset: false
+      });
+
+      localStorage.setItem('macro_logs_today', JSON.stringify(logs));
+      updateUI();
+    }
+
+    function toggleMealReset(index, event) {
+      if (event) event.stopPropagation();
+      if (!logs[index]) return;
+
       logs[index].reset = !logs[index].reset;
       localStorage.setItem('macro_logs_today', JSON.stringify(logs));
-      updateUI();
-    }
-
-    function repeatMeal(item) {
-      logs.push({
-        name: item.name,
-        cal: item.cal,
-        p: item.p,
-        f: item.f,
-        c: item.c,
-        reset: false
-      });
-      localStorage.setItem('macro_logs_today', JSON.stringify(logs));
-      updateUI();
-    }
-
-    function toggleFavorite(index) {
-      const item = logs[index];
-      const favIndex = favorites.findIndex(f => f.name === item.name);
-      
-      if (favIndex >= 0) {
-        favorites.splice(favIndex, 1);
-      } else {
-        favorites.push({
-          name: item.name,
-          cal: item.cal,
-          p: item.p,
-          f: item.f,
-          c: item.c
-        });
-      }
-      localStorage.setItem('macro_favorites', JSON.stringify(favorites));
-      updateUI();
-    }
-
-    function removeFavorite(favIndex) {
-      favorites.splice(favIndex, 1);
-      localStorage.setItem('macro_favorites', JSON.stringify(favorites));
       updateUI();
     }
 
@@ -331,48 +398,54 @@
       renderStat('rem-f', rem.f);
       renderStat('rem-c', rem.c);
 
-      // お気に入りリストの表示
-      const favListEl = document.getElementById('favorite-list');
+      const favListEl = document.getElementById('fav-list');
       if (favorites.length === 0) {
-        favListEl.innerHTML = '<div style="color:#8e8e93; font-size:0.85rem;">お気に入りは登録されていません</div>';
+        favListEl.innerHTML = '<div class="empty-msg">ログの「★ お気に入り」から登録できます</div>';
       } else {
-        favListEl.innerHTML = favorites.map((item, fIdx) => `
-          <div class="log-item">
+        favListEl.innerHTML = favorites.map((item, index) => `
+          <div class="log-item" onclick="repeatFavorite(${index})">
             <div>
-              <strong>${item.name}</strong><br>
-              <span style="font-size:0.8rem; color:#666;">${item.cal}kcal (P:${item.p}g F:${item.f}g C:${item.c}g)</span>
+              <span style="font-weight: 500;">${item.name}</span>
+              <div style="font-size: 0.75rem; color: #666; margin-top: 2px;">
+                P:${item.p}g F:${item.f}g C:${item.c}g
+              </div>
             </div>
-            <div class="log-actions">
-              <button class="btn-action" onclick='repeatMeal(${JSON.stringify(item)})'>+ 再記録</button>
-              <button class="btn-action btn-cancel" onclick="removeFavorite(${fIdx})">削除</button>
+            <div style="text-align: right; display: flex; align-items: center;">
+              <div>
+                <span style="font-weight: bold; color: var(--accent); font-size: 0.85rem;">+ 再記録</span>
+                <div style="font-size: 0.9rem; font-weight: bold;">${item.cal} kcal</div>
+              </div>
+              <button class="btn-fav-del" onclick="removeFavorite(${index}, event)" title="お気に入りから削除">✕</button>
             </div>
           </div>
         `).join('');
       }
 
-      // 食事ログの表示
       const listEl = document.getElementById('log-list');
       if (logs.length === 0) {
-        listEl.innerHTML = '<div style="color:#8e8e93; font-size:0.85rem;">本日の記録はありません</div>';
+        listEl.innerHTML = '<div class="empty-msg">まだ記録はありません</div>';
       } else {
-        listEl.innerHTML = logs.map((item, idx) => {
-          const isFav = favorites.some(f => f.name === item.name);
-          const isCancelled = !!item.reset;
-
-          return `
-            <div class="log-item ${isCancelled ? 'cancelled' : ''}">
-              <div class="log-text">
-                <div><strong>${item.name}</strong> ${isCancelled ? '<span style="font-size:0.75rem; color:#ff9500;">(計算外)</span>' : ''}</div>
-                <div style="font-size:0.8rem; color:#666;">${item.cal}kcal (P:${item.p}g F:${item.f}g C:${item.c}g)</div>
-              </div>
-              <div class="log-actions">
-                <button class="btn-action" onclick='repeatMeal(${JSON.stringify(item)})'>+ 再記録</button>
-                <button class="btn-action ${isFav ? 'active' : ''}" onclick="toggleFavorite(${idx})">${isFav ? '★' : '☆'} お気に入り</button>
-                <button class="btn-action btn-cancel" onclick="toggleMealReset(${idx})">${isCancelled ? '計算に戻す' : '差し引き取消'}</button>
+        listEl.innerHTML = logs.map((item, index) => `
+          <div class="log-item" onclick="repeatMeal(${index})" style="${item.reset ? 'opacity: 0.5;' : ''}">
+            <div>
+              <span style="font-weight: 500; ${item.reset ? 'text-decoration: line-through;' : ''}">${item.name}</span>
+              ${item.reset ? '<span style="color:var(--secondary); font-size:0.75rem;"> (計算外)</span>' : ''}
+              <div style="font-size: 0.75rem; color: #666; margin-top: 2px;">
+                P:${item.p}g F:${item.f}g C:${item.c}g
               </div>
             </div>
-          `;
-        }).join('');
+            <div style="text-align: right; display: flex; align-items: center; gap: 8px;">
+              <button class="btn-cancel ${item.reset ? 'is-reset' : ''}" onclick="toggleMealReset(${index}, event)">
+                ${item.reset ? '計算に戻す' : '差し引き取消'}
+              </button>
+              <button class="btn-fav-add" onclick="addToFavorites(${index}, event)">★ お気に入り</button>
+              <div>
+                <span style="font-weight: bold; color: var(--accent); font-size: 0.85rem;">+ 再記録</span>
+                <div style="font-size: 0.9rem; font-weight: bold;">${item.cal} kcal</div>
+              </div>
+            </div>
+          </div>
+        `).join('');
       }
     }
 
@@ -385,8 +458,8 @@
 
     async function addMeal() {
       const input = document.getElementById('meal-input').value;
-      if (!input && !currentBase64Image) {
-        alert('テキストを入力するか、食事写真を撮影/選択してください。');
+      if (!input && !selectedImage) {
+        alert('テキストを入力するか、食事の写真を選択してください。');
         return;
       }
 
@@ -395,9 +468,13 @@
       btn.innerText = 'Geminiが栄養計算中...';
 
       try {
-        const payload = {};
-        if (input) payload.prompt = input;
-        if (currentBase64Image) payload.imageBase64 = currentBase64Image;
+        const payload = {
+          prompt: input
+        };
+
+        if (selectedImage) {
+          payload.image = selectedImage;
+        }
 
         const response = await fetch('/api/gemini', {
           method: 'POST',
@@ -405,16 +482,20 @@
           body: JSON.stringify(payload)
         });
 
+        const data = await response.json();
+
         if (!response.ok) {
-          throw new Error('API呼び出しエラー');
+          const detailMsg = data.details?.error?.message || data.error || '解析エラー';
+          throw new Error(detailMsg);
         }
 
-        const data = await response.json();
         const resultText = data.candidates[0].content.parts[0].text;
         const nutrition = JSON.parse(resultText);
 
+        const mealName = input.trim() || nutrition.name || '写真から解析した食事';
+
         logs.push({
-          name: nutrition.name || input || '写真の食事',
+          name: mealName,
           cal: Math.round(nutrition.cal),
           p: Math.round(nutrition.p),
           f: Math.round(nutrition.f),
@@ -424,16 +505,12 @@
 
         localStorage.setItem('macro_logs_today', JSON.stringify(logs));
         
-        // 入力クリア
         document.getElementById('meal-input').value = '';
-        document.getElementById('image-preview').style.display = 'none';
-        document.getElementById('image-input').value = '';
-        currentBase64Image = null;
-
+        clearImage();
         updateUI();
 
       } catch (err) {
-        alert('解析に失敗しました。画像のファイルサイズやVercel設定を確認してください。');
+        alert('解析に失敗しました: ' + err.message);
         console.error(err);
       } finally {
         btn.disabled = false;
