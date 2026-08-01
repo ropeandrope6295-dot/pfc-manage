@@ -45,7 +45,7 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('Gemini API Error:', errorData);
+      console.error('Gemini API Error Full Details:\n' + JSON.stringify(errorData, null, 2));
       return res.status(response.status).json({ error: 'Failed to fetch from Gemini API', details: errorData });
     }
 
