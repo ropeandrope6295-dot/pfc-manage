@@ -1,11 +1,9 @@
 // api/gemini.js
 export default async function handler(req, res) {
-  // POSTリクエストのみ受け付ける
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Vercelに設定した環境変数からAPIキーを取得
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
@@ -19,11 +17,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    // VercelサーバーからGoogle Gemini APIを安全に呼び出し
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    // AI StudioのcURLに基づいたエンドポイントURLとヘッダー指定
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent', {
       method: 'POST',
       headers: { 
-        'Content-Type': 'application/json' 
+        'Content-Type': 'application/json',
+        'X-goog-api-key': apiKey // ヘッダーでAPIキーを渡す
       },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
