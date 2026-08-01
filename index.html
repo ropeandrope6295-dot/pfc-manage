@@ -170,21 +170,25 @@
 
     // 差し引き（摂取量）をリセットして残りマクロを目標値に戻す関数
     function resetDeduction() {
-      if (logs.length === 0) {
-        alert('リセットする差し引きデータがありません。');
+      const activeLogs = logs.filter(item => !item.reset);
+      if (activeLogs.length === 0) {
+        alert('リセット対象の差し引きデータがありません。');
         return;
       }
-      if (confirm('今日の差し引きをリセットし、残りマクロを目標値に戻しますか？')) {
-        logs = [];
-        localStorage.removeItem('macro_logs_today');
+      if (confirm('今日の差し引きをリセットし、残りマクロを目標値に戻しますか？（食事ログ一覧は保持されます）')) {
+        // すべてのログを差し引き計算対象外フラグ(reset: true)にする
+        logs.forEach(item => item.reset = true);
+        localStorage.setItem('macro_logs_today', JSON.stringify(logs));
         updateUI();
       }
     }
 
     function updateUI() {
-      // 食べた合計を計算
+      // 食べた合計を計算 (リセットされていない有効なログのみ集計)
       const eaten = logs.reduce((acc, item) => {
-        acc.cal += item.cal; acc.p += item.p; acc.f += item.f; acc.c += item.c;
+        if (!item.reset) {
+          acc.cal += item.cal; acc.p += item.p; acc.f += item.f; acc.c += item.c;
+        }
         return acc;
       }, { cal: 0, p: 0, f: 0, c: 0 });
 
@@ -208,8 +212,8 @@
         listEl.innerHTML = '<div class="empty-msg">まだ記録はありません</div>';
       } else {
         listEl.innerHTML = logs.map(item => `
-          <div class="log-item">
-            <span>${item.name}</span>
+          <div class="log-item" style="${item.reset ? 'opacity: 0.5; text-decoration: line-through;' : ''}">
+            <span>${item.name}${item.reset ? ' <small style="color:var(--secondary);">(計算外)</small>' : ''}</span>
             <span>${item.cal}kcal (P:${item.p}g F:${item.f}g C:${item.c}g)</span>
           </div>
         `).join('');
@@ -255,7 +259,8 @@
           cal: Math.round(nutrition.cal),
           p: Math.round(nutrition.p),
           f: Math.round(nutrition.f),
-          c: Math.round(nutrition.c)
+          c: Math.round(nutrition.c),
+          reset: false
         });
 
         localStorage.setItem('macro_logs_today', JSON.stringify(logs));
