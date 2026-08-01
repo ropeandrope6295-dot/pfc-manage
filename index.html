@@ -87,7 +87,10 @@
   <div class="container">
     <!-- 残り許容量ダッシュボード -->
     <div class="card">
-      <h2>今日の残りマクロ</h2>
+      <div class="card-header">
+        <h2>今日の残りマクロ</h2>
+        <button class="btn-reset" onclick="resetDeduction()">差し引きリセット</button>
+      </div>
       <div class="grid">
         <div class="stat-box">
           <div class="stat-label">Cal (kcal)</div>
@@ -132,9 +135,9 @@
     <!-- 本日のログエリア（リセットボタン配置） -->
     <div class="card">
       <div class="card-header">
-        <h2>本日の食事ログ</h2>
-        <button class="btn-reset" onclick="resetLogs()">リセット</button>
-      </div>
+    <!-- 本日のログエリア -->
+    <div class="card">
+      <h2>本日の食事ログ</h2>
       <div id="log-list"></div>
     </div>
   </div>
@@ -165,13 +168,13 @@
       alert('設定を保存しました');
     }
 
-    // 本日のログをリセットする関数
-    function resetLogs() {
+    // 差し引き（摂取量）をリセットして残りマクロを目標値に戻す関数
+    function resetDeduction() {
       if (logs.length === 0) {
-        alert('リセットするログがありません。');
+        alert('リセットする差し引きデータがありません。');
         return;
       }
-      if (confirm('本日の食事ログをすべて消去しますか？')) {
+      if (confirm('今日の差し引きをリセットし、残りマクロを目標値に戻しますか？')) {
         logs = [];
         localStorage.removeItem('macro_logs_today');
         updateUI();
