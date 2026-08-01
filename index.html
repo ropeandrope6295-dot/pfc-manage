@@ -82,6 +82,27 @@
     .log-item:active {
       background-color: #e5e5ea;
     }
+    .btn-fav-add {
+      background: none;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      width: auto;
+      margin: 0;
+    }
+    .btn-fav-del {
+      background: none;
+      border: none;
+      color: var(--secondary);
+      font-size: 0.8rem;
+      padding: 4px;
+      width: auto;
+      margin: 0 0 0 8px;
+      cursor: pointer;
+    }
     .empty-msg {
       color: var(--secondary);
       font-size: 0.85rem;
@@ -125,6 +146,15 @@
       <button id="add-btn" onclick="addMeal()">解析して引き算</button>
     </div>
 
+    <!-- お気に入りの食事エリア -->
+    <div class="card">
+      <div class="card-header">
+        <h2>お気に入りの食事</h2>
+        <small style="font-size: 0.75rem; color: var(--secondary);">タップで即座に再記録</small>
+      </div>
+      <div id="fav-list"></div>
+    </div>
+
     <!-- 設定エリア -->
     <details class="card">
       <summary style="font-weight: bold; cursor: pointer;">目標値設定</summary>
@@ -155,6 +185,7 @@
       cal: 2000, p: 150, f: 50, c: 200
     };
     let logs = JSON.parse(localStorage.getItem('macro_logs_today')) || [];
+    let favorites = JSON.parse(localStorage.getItem('macro_favorites')) || [];
 
     // 初期化
     document.getElementById('target-cal').value = settings.cal;
@@ -173,6 +204,57 @@
       localStorage.setItem('macro_settings', JSON.stringify(settings));
       updateUI();
       alert('設定を保存しました');
+    }
+
+    // ログからお気に入りに追加する関数
+    function addToFavorites(index, event) {
+      if (event) event.stopPropagation(); // ログの再記録発火を防止
+      const item = logs[index];
+      if (!item) return;
+
+      // 既に同名のものが登録されているかチェック
+      const exists = favorites.some(fav => fav.name === item.name && fav.cal === item.cal);
+      if (exists) {
+        alert('この食事はすでにお気に入りに登録されています。');
+        return;
+      }
+
+      favorites.push({
+        name: item.name,
+        cal: item.cal,
+        p: item.p,
+        f: item.f,
+        c: item.c
+      });
+
+      localStorage.setItem('macro_favorites', JSON.stringify(favorites));
+      updateUI();
+    }
+
+    // お気に入りから削除する関数
+    function removeFavorite(favIndex, event) {
+      if (event) event.stopPropagation();
+      favorites.splice(favIndex, 1);
+      localStorage.setItem('macro_favorites', JSON.stringify(favorites));
+      updateUI();
+    }
+
+    // お気に入りから食事を再記録（差し引き）する関数
+    function repeatFavorite(favIndex) {
+      const item = favorites[favIndex];
+      if (!item) return;
+
+      logs.push({
+        name: item.name,
+        cal: item.cal,
+        p: item.p,
+        f: item.f,
+        c: item.c,
+        reset: false
+      });
+
+      localStorage.setItem('macro_logs_today', JSON.stringify(logs));
+      updateUI();
     }
 
     // 差し引き（摂取量）をリセットして残りマクロを目標値に戻す関数
@@ -231,6 +313,30 @@
       renderStat('rem-f', rem.f);
       renderStat('rem-c', rem.c);
 
+      // お気に入り一覧の表示
+      const favListEl = document.getElementById('fav-list');
+      if (favorites.length === 0) {
+        favListEl.innerHTML = '<div class="empty-msg">ログの「★ お気に入り」から登録できます</div>';
+      } else {
+        favListEl.innerHTML = favorites.map((item, index) => `
+          <div class="log-item" onclick="repeatFavorite(${index})">
+            <div>
+              <span style="font-weight: 500;">${item.name}</span>
+              <div style="font-size: 0.75rem; color: #666; margin-top: 2px;">
+                P:${item.p}g F:${item.f}g C:${item.c}g
+              </div>
+            </div>
+            <div style="text-align: right; display: flex; align-items: center;">
+              <div>
+                <span style="font-weight: bold; color: var(--accent); font-size: 0.85rem;">+ 再記録</span>
+                <div style="font-size: 0.9rem; font-weight: bold;">${item.cal} kcal</div>
+              </div>
+              <button class="btn-fav-del" onclick="removeFavorite(${index}, event)" title="お気に入りから削除">✕</button>
+            </div>
+          </div>
+        `).join('');
+      }
+
       // ログ一覧の表示
       const listEl = document.getElementById('log-list');
       if (logs.length === 0) {
@@ -245,9 +351,12 @@
                 P:${item.p}g F:${item.f}g C:${item.c}g
               </div>
             </div>
-            <div style="text-align: right;">
-              <span style="font-weight: bold; color: var(--accent); font-size: 0.85rem;">+ 再記録</span>
-              <div style="font-size: 0.9rem; font-weight: bold;">${item.cal} kcal</div>
+            <div style="text-align: right; display: flex; align-items: center; gap: 8px;">
+              <button class="btn-fav-add" onclick="addToFavorites(${index}, event)">★ お気に入り</button>
+              <div>
+                <span style="font-weight: bold; color: var(--accent); font-size: 0.85rem;">+ 再記録</span>
+                <div style="font-size: 0.9rem; font-weight: bold;">${item.cal} kcal</div>
+              </div>
             </div>
           </div>
         `).join('');
