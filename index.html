@@ -13,6 +13,7 @@
       --text: #1d1d1f;
       --accent: #0071e3;
       --danger: #ff3b30;
+      --secondary: #8e8e93;
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -31,6 +32,13 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     }
     h2 { font-size: 1.1rem; margin-top: 0; margin-bottom: 12px; }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .card-header h2 { margin: 0; }
     .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center; }
     .stat-box { background: #f0f0f5; padding: 8px; border-radius: 8px; }
     .stat-label { font-size: 0.75rem; color: #666; }
@@ -53,12 +61,25 @@
       cursor: pointer;
     }
     button:disabled { background: #aaa; }
+    .btn-reset {
+      background: var(--danger);
+      width: auto;
+      padding: 6px 12px;
+      margin: 0;
+      font-size: 0.8rem;
+    }
     .log-item {
       display: flex;
       justify-content: space-between;
       border-bottom: 1px solid #eee;
       padding: 8px 0;
       font-size: 0.9rem;
+    }
+    .empty-msg {
+      color: var(--secondary);
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 12px 0;
     }
   </style>
 </head>
@@ -108,9 +129,12 @@
       </div>
     </details>
 
-    <!-- 本日のログ -->
+    <!-- 本日のログエリア（リセットボタン配置） -->
     <div class="card">
-      <h2>本日の食事ログ</h2>
+      <div class="card-header">
+        <h2>本日の食事ログ</h2>
+        <button class="btn-reset" onclick="resetLogs()">リセット</button>
+      </div>
       <div id="log-list"></div>
     </div>
   </div>
@@ -141,6 +165,19 @@
       alert('設定を保存しました');
     }
 
+    // 本日のログをリセットする関数
+    function resetLogs() {
+      if (logs.length === 0) {
+        alert('リセットするログがありません。');
+        return;
+      }
+      if (confirm('本日の食事ログをすべて消去しますか？')) {
+        logs = [];
+        localStorage.removeItem('macro_logs_today');
+        updateUI();
+      }
+    }
+
     function updateUI() {
       // 食べた合計を計算
       const eaten = logs.reduce((acc, item) => {
@@ -164,12 +201,16 @@
 
       // ログ一覧の表示
       const listEl = document.getElementById('log-list');
-      listEl.innerHTML = logs.map(item => `
-        <div class="log-item">
-          <span>${item.name}</span>
-          <span>${item.cal}kcal (P:${item.p}g F:${item.f}g C:${item.c}g)</span>
-        </div>
-      `).join('');
+      if (logs.length === 0) {
+        listEl.innerHTML = '<div class="empty-msg">まだ記録はありません</div>';
+      } else {
+        listEl.innerHTML = logs.map(item => `
+          <div class="log-item">
+            <span>${item.name}</span>
+            <span>${item.cal}kcal (P:${item.p}g F:${item.f}g C:${item.c}g)</span>
+          </div>
+        `).join('');
+      }
     }
 
     function renderStat(id, val) {
@@ -191,7 +232,6 @@
         const prompt = `以下の食事内容の概算栄養素（カロリー、タンパク質P、脂質F、炭水化物C）を推定し、指定のJSONフォーマットのみで返してください。
 食事内容: "${input}"`;
 
-        // 自身のVercel Serverless Function (/api/gemini) 宛てにリクエスト
         const response = await fetch('/api/gemini', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
