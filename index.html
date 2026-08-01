@@ -137,6 +137,11 @@
       text-align: center;
       padding: 12px 0;
     }
+    .date-badge {
+      font-size: 0.8rem;
+      color: var(--secondary);
+      font-weight: normal;
+    }
   </style>
 </head>
 <body>
@@ -144,8 +149,8 @@
     <!-- 残り許容量ダッシュボード -->
     <div class="card">
       <div class="card-header">
-        <h2>今日の残りマクロ</h2>
-        <button class="btn-reset" onclick="resetDeduction()">差し引きリセット</button>
+        <h2>今日の残りマクロ <span id="current-date-display" class="date-badge"></span></h2>
+        <button class="btn-reset" onclick="resetDeduction()">本日分リセット</button>
       </div>
       <div class="grid">
         <div class="stat-box">
@@ -226,9 +231,34 @@
     let settings = JSON.parse(localStorage.getItem('macro_settings')) || {
       cal: 2000, p: 150, f: 50, c: 200
     };
-    let logs = JSON.parse(localStorage.getItem('macro_logs_today')) || [];
     let favorites = JSON.parse(localStorage.getItem('macro_favorites')) || [];
     let selectedImage = null; // { mimeType: 'image/jpeg', data: '...' }
+
+    // 今日の日付を取得 (YYYY-MM-DD形式)
+    function getTodayString() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    const todayStr = getTodayString();
+    const lastSavedDate = localStorage.getItem('macro_last_date');
+    let logs = [];
+
+    // 日付チェック：日付が変わっていればログを自動クリア
+    if (lastSavedDate !== todayStr) {
+      logs = [];
+      localStorage.setItem('macro_logs_today', JSON.stringify(logs));
+      localStorage.setItem('macro_last_date', todayStr);
+    } else {
+      logs = JSON.parse(localStorage.getItem('macro_logs_today')) || [];
+    }
+
+    // 今日の日付を表示 (MM/DD)
+    const [_, m, d] = todayStr.split('-');
+    document.getElementById('current-date-display').innerText = `(${Number(m)}/${Number(d)})`;
 
     document.getElementById('target-cal').value = settings.cal;
     document.getElementById('target-p').value = settings.p;
@@ -244,7 +274,6 @@
       reader.onload = function(e) {
         const img = new Image();
         img.onload = function() {
-          // 最大長辺を1024pxにリサイズしてファイルサイズを軽量化
           const maxDim = 1024;
           let width = img.width;
           let height = img.height;
@@ -267,7 +296,6 @@
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
 
-          // 軽量なJPEGに変換
           const resizedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
           const mimeType = 'image/jpeg';
           const base64Data = resizedDataUrl.split(',')[1];
@@ -345,13 +373,12 @@
     }
 
     function resetDeduction() {
-      const activeLogs = logs.filter(item => !item.reset);
-      if (activeLogs.length === 0) {
-        alert('リセット対象の差し引きデータがありません。');
+      if (logs.length === 0) {
+        alert('リセット対象の食事データがありません。');
         return;
       }
-      if (confirm('今日の差し引きをリセットし、残りマクロを目標値に戻しますか？（食事ログ一覧は保持されます）')) {
-        logs.forEach(item => item.reset = true);
+      if (confirm('本日の食事ログと差し引きをすべてクリアしますか？')) {
+        logs = [];
         localStorage.setItem('macro_logs_today', JSON.stringify(logs));
         updateUI();
       }
