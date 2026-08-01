@@ -68,6 +68,18 @@
       margin: 0;
       font-size: 0.8rem;
     }
+    .btn-image-upload {
+      display: inline-block;
+      background: #e5e5ea;
+      color: #1d1d1f;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      border: 1px solid #ccc;
+    }
     .log-item {
       display: flex;
       justify-content: space-between;
@@ -139,10 +151,25 @@
       </div>
     </div>
 
-    <!-- 食事入力エリア -->
+    <!-- 食事入力エリア (テキスト + 写真対応) -->
     <div class="card">
-      <h2>食事を記録 (Gemini解析)</h2>
-      <textarea id="meal-input" rows="2" placeholder="例: 鮭の塩焼き、白米普通盛り、味噌汁"></textarea>
+      <h2>食事を記録 (Gemini AI解析)</h2>
+      <textarea id="meal-input" rows="2" placeholder="例: 鮭の塩焼き、白米普通盛り（写真は下から追加できます）"></textarea>
+
+      <!-- 写真選択用UI -->
+      <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+        <label for="image-input" class="btn-image-upload">
+          📷 食事写真を撮影/選択
+        </label>
+        <input type="file" id="image-input" accept="image/*" capture="environment" onchange="handleImageSelect(event)" style="display: none;">
+        <button id="clear-img-btn" onclick="clearImage()" style="display: none; width: auto; background: var(--secondary); margin: 0; padding: 6px 12px; font-size: 0.8rem;">写真取消</button>
+      </div>
+
+      <!-- 画像プレビュー表示領域 -->
+      <div id="image-preview-container" style="display: none; margin-bottom: 8px; text-align: center;">
+        <img id="image-preview" style="max-width: 100%; max-height: 200px; border-radius: 8px; border: 1px solid #ccc; object-fit: cover;">
+      </div>
+
       <button id="add-btn" onclick="addMeal()">解析して引き算</button>
     </div>
 
@@ -187,6 +214,9 @@
     let logs = JSON.parse(localStorage.getItem('macro_logs_today')) || [];
     let favorites = JSON.parse(localStorage.getItem('macro_favorites')) || [];
 
+    // 選択中の画像データ（Base64）
+    let selectedImage = null; // { mimeType: 'image/jpeg', data: '...' }
+
     // 初期化
     document.getElementById('target-cal').value = settings.cal;
     document.getElementById('target-p').value = settings.p;
@@ -206,13 +236,43 @@
       alert('設定を保存しました');
     }
 
+    function handleImageSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const dataUrl = e.target.result;
+        const mimeType = file.type || 'image/jpeg';
+        const base64Data = dataUrl.split(',')[1];
+
+        selectedImage = {
+          mimeType: mimeType,
+          data: base64Data
+        };
+
+        // プレビュー表示
+        const imgEl = document.getElementById('image-preview');
+        imgEl.src = dataUrl;
+        document.getElementById('image-preview-container').style.display = 'block';
+        document.getElementById('clear-img-btn').style.display = 'inline-block';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function clearImage() {
+      selectedImage = null;
+      document.getElementById('image-input').value = '';
+      document.getElementById('image-preview-container').style.display = 'none';
+      document.getElementById('clear-img-btn').style.display = 'none';
+    }
+
     // ログからお気に入りに追加する関数
     function addToFavorites(index, event) {
-      if (event) event.stopPropagation(); // ログの再記録発火を防止
+      if (event) event.stopPropagation();
       const item = logs[index];
       if (!item) return;
 
-      // 既に同名のものが登録されているかチェック
       const exists = favorites.some(fav => fav.name === item.name && fav.cal === item.cal);
       if (exists) {
         alert('この食事はすでにお気に入りに登録されています。');
@@ -231,7 +291,6 @@
       updateUI();
     }
 
-    // お気に入りから削除する関数
     function removeFavorite(favIndex, event) {
       if (event) event.stopPropagation();
       favorites.splice(favIndex, 1);
@@ -239,7 +298,6 @@
       updateUI();
     }
 
-    // お気に入りから食事を再記録（差し引き）する関数
     function repeatFavorite(favIndex) {
       const item = favorites[favIndex];
       if (!item) return;
@@ -257,7 +315,6 @@
       updateUI();
     }
 
-    // 差し引き（摂取量）をリセットして残りマクロを目標値に戻す関数
     function resetDeduction() {
       const activeLogs = logs.filter(item => !item.reset);
       if (activeLogs.length === 0) {
@@ -265,14 +322,12 @@
         return;
       }
       if (confirm('今日の差し引きをリセットし、残りマクロを目標値に戻しますか？（食事ログ一覧は保持されます）')) {
-        // すべてのログを差し引き計算対象外フラグ(reset: true)にする
         logs.forEach(item => item.reset = true);
         localStorage.setItem('macro_logs_today', JSON.stringify(logs));
         updateUI();
       }
     }
 
-    // ログから食事内容をコピーして再度差し引き実行する関数
     function repeatMeal(index) {
       const item = logs[index];
       if (!item) return;
@@ -291,7 +346,6 @@
     }
 
     function updateUI() {
-      // 食べた合計を計算 (リセットされていない有効なログのみ集計)
       const eaten = logs.reduce((acc, item) => {
         if (!item.reset) {
           acc.cal += item.cal; acc.p += item.p; acc.f += item.f; acc.c += item.c;
@@ -299,7 +353,6 @@
         return acc;
       }, { cal: 0, p: 0, f: 0, c: 0 });
 
-      // 残りを引き算
       const rem = {
         cal: settings.cal - eaten.cal,
         p: settings.p - eaten.p,
@@ -307,7 +360,6 @@
         c: settings.c - eaten.c
       };
 
-      // 表示更新
       renderStat('rem-cal', rem.cal);
       renderStat('rem-p', rem.p);
       renderStat('rem-f', rem.f);
@@ -372,20 +424,28 @@
 
     async function addMeal() {
       const input = document.getElementById('meal-input').value;
-      if (!input) return;
+      if (!input && !selectedImage) {
+        alert('テキストを入力するか、食事の写真を選択してください。');
+        return;
+      }
 
       const btn = document.getElementById('add-btn');
       btn.disabled = true;
       btn.innerText = 'Geminiが栄養計算中...';
 
       try {
-        const prompt = `以下の食事内容の概算栄養素（カロリー、タンパク質P、脂質F、炭水化物C）を推定し、指定のJSONフォーマットのみで返してください。
-食事内容: "${input}"`;
+        const payload = {
+          prompt: input
+        };
+
+        if (selectedImage) {
+          payload.image = selectedImage;
+        }
 
         const response = await fetch('/api/gemini', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: prompt })
+          body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
@@ -396,9 +456,12 @@
         const resultText = data.candidates[0].content.parts[0].text;
         const nutrition = JSON.parse(resultText);
 
+        // 食事名の決定（入力テキストがあれば優先、無ければAIが推測した料理名）
+        const mealName = input.trim() || nutrition.name || '写真から解析した食事';
+
         // ログに追加
         logs.push({
-          name: input,
+          name: mealName,
           cal: Math.round(nutrition.cal),
           p: Math.round(nutrition.p),
           f: Math.round(nutrition.f),
@@ -407,11 +470,14 @@
         });
 
         localStorage.setItem('macro_logs_today', JSON.stringify(logs));
+        
+        // フォームのリセット
         document.getElementById('meal-input').value = '';
+        clearImage();
         updateUI();
 
       } catch (err) {
-        alert('解析に失敗しました。Vercelの環境変数設定を確認してください。');
+        alert('解析に失敗しました。画像のサイズやAPI設定を確認してください。');
         console.error(err);
       } finally {
         btn.disabled = false;
