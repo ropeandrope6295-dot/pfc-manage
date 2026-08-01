@@ -71,9 +71,16 @@
     .log-item {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       border-bottom: 1px solid #eee;
-      padding: 8px 0;
+      padding: 10px 8px;
       font-size: 0.9rem;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: background-color 0.15s ease;
+    }
+    .log-item:active {
+      background-color: #e5e5ea;
     }
     .empty-msg {
       color: var(--secondary);
@@ -132,12 +139,12 @@
       </div>
     </details>
 
-    <!-- 本日のログエリア（リセットボタン配置） -->
-    <div class="card">
-      <div class="card-header">
     <!-- 本日のログエリア -->
     <div class="card">
-      <h2>本日の食事ログ</h2>
+      <div class="card-header">
+        <h2>本日の食事ログ</h2>
+        <small style="font-size: 0.75rem; color: var(--secondary);">タップで同じ食事を再記録</small>
+      </div>
       <div id="log-list"></div>
     </div>
   </div>
@@ -183,6 +190,24 @@
       }
     }
 
+    // ログから食事内容をコピーして再度差し引き実行する関数
+    function repeatMeal(index) {
+      const item = logs[index];
+      if (!item) return;
+
+      logs.push({
+        name: item.name,
+        cal: item.cal,
+        p: item.p,
+        f: item.f,
+        c: item.c,
+        reset: false
+      });
+
+      localStorage.setItem('macro_logs_today', JSON.stringify(logs));
+      updateUI();
+    }
+
     function updateUI() {
       // 食べた合計を計算 (リセットされていない有効なログのみ集計)
       const eaten = logs.reduce((acc, item) => {
@@ -211,10 +236,19 @@
       if (logs.length === 0) {
         listEl.innerHTML = '<div class="empty-msg">まだ記録はありません</div>';
       } else {
-        listEl.innerHTML = logs.map(item => `
-          <div class="log-item" style="${item.reset ? 'opacity: 0.5; text-decoration: line-through;' : ''}">
-            <span>${item.name}${item.reset ? ' <small style="color:var(--secondary);">(計算外)</small>' : ''}</span>
-            <span>${item.cal}kcal (P:${item.p}g F:${item.f}g C:${item.c}g)</span>
+        listEl.innerHTML = logs.map((item, index) => `
+          <div class="log-item" onclick="repeatMeal(${index})" style="${item.reset ? 'opacity: 0.5;' : ''}">
+            <div>
+              <span style="font-weight: 500; ${item.reset ? 'text-decoration: line-through;' : ''}">${item.name}</span>
+              ${item.reset ? '<span style="color:var(--secondary); font-size:0.75rem;"> (計算外)</span>' : ''}
+              <div style="font-size: 0.75rem; color: #666; margin-top: 2px;">
+                P:${item.p}g F:${item.f}g C:${item.c}g
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <span style="font-weight: bold; color: var(--accent); font-size: 0.85rem;">+ 再記録</span>
+              <div style="font-size: 0.9rem; font-weight: bold;">${item.cal} kcal</div>
+            </div>
           </div>
         `).join('');
       }
